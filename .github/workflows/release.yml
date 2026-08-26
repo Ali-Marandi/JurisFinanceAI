@@ -1,0 +1,77 @@
+name: Build and Release JurisFinanceAI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyInstaller PyQt6 openai httpx pdfplumber python-docx matplotlib numpy Pillow cryptography
+
+      - name: Build application
+        run: |
+          pyinstaller build.spec --noconfirm
+
+      - name: Create archive
+        run: |
+          cd dist/JurisFinanceAI
+          7z a -tzip ../../JurisFinanceAI-Windows-x64.zip .
+        shell: bash
+
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF_NAME:-"v${{ github.event.inputs.version }}"}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "## JurisFinanceAI ${TAG}" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### What's New" >> CHANGELOG.md
+          echo "- AI-powered legal document analysis" >> CHANGELOG.md
+          echo "- Contract review with risk scoring" >> CHANGELOG.md
+          echo "- Financial analytics dashboard" >> CHANGELOG.md
+          echo "- Risk assessment engine" >> CHANGELOG.md
+          echo "- Professional dark/light theme" >> CHANGELOG.md
+          echo "- Local SQLite database" >> CHANGELOG.md
+          echo "- Persian (Farsi) UI" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Installation" >> CHANGELOG.md
+          echo "1. Download and extract the ZIP file" >> CHANGELOG.md
+          echo "2. Run \`JurisFinanceAI.exe\`" >> CHANGELOG.md
+          echo "3. Enter your OpenAI API key in Settings" >> CHANGELOG.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: JurisFinanceAI ${{ steps.changelog.outputs.tag }}
+          body_path: CHANGELOG.md
+          files: |
+            JurisFinanceAI-Windows-x64.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
