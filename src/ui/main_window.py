@@ -19,6 +19,7 @@ from .contracts import ContractsPage
 from .finance import FinancePage
 from .risk import RiskPage
 from .settings import SettingsPage
+from .quant_dashboard import QuantDashboard
 from ..core.config import get_config
 from ..core.database import get_database
 
@@ -33,6 +34,7 @@ class MainWindow(QMainWindow):
         "contracts": "تحلیل قراردادها",
         "finance": "تحلیل مالی",
         "risk": "ارزیابی ریسک",
+        "quant": "تحلیل فایننس کمی",
         "settings": "تنظیمات",
     }
 
@@ -118,6 +120,7 @@ class MainWindow(QMainWindow):
             ("contracts", "🛡", "تحلیل قراردادها"),
             ("finance", "💰", "تحلیل مالی"),
             ("risk", "⚠", "ارزیابی ریسک"),
+            ("quant", "📐", "فایننس کمی"),
         ]
 
         self.nav_buttons = {}
@@ -175,7 +178,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons["settings"] = settings_btn
         layout.addWidget(settings_btn)
 
-        version = QLabel("نسخه ۱.۰.۰")
+        version = QLabel("نسخه ۲.۰.۰")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version.setStyleSheet("color: #475569; font-size: 11px; background: transparent; padding: 8px;")
         layout.addWidget(version)
@@ -214,6 +217,7 @@ class MainWindow(QMainWindow):
         self.contracts_page = ContractsPage()
         self.finance_page = FinancePage()
         self.risk_page = RiskPage()
+        self.quant_page = QuantDashboard()
         self.settings_page = SettingsPage(self)
 
         self.pages = {
@@ -223,6 +227,7 @@ class MainWindow(QMainWindow):
             "contracts": self.contracts_page,
             "finance": self.finance_page,
             "risk": self.risk_page,
+            "quant": self.quant_page,
             "settings": self.settings_page,
         }
 
