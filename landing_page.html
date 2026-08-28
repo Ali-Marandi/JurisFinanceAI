@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JurisFinanceAI v3.0.0 — هوش مصنوعی مالی و حقوقی</title>
+<style>
+/* ========== RESET & BASE ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-card-hover: #273549;
+  --blue: #3b82f6;
+  --blue-glow: rgba(59, 130, 246, 0.15);
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139, 92, 246, 0.15);
+  --gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --gradient-subtle: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08));
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: rgba(148, 163, 184, 0.1);
+  --border-hover: rgba(148, 163, 184, 0.2);
+  --radius: 12px;
+  --radius-lg: 20px;
+  --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, 'Vazirmatn', 'B Nazanin', 'Tahoma', Arial, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+}
+
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+  direction: rtl;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-secondary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ========== NAVBAR ========== */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.3s ease;
+}
+.navbar.scrolled {
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+}
+.nav-logo {
+  font-size: 1.2rem; font-weight: 700;
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; text-decoration: none;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.nav-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: var(--gradient);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+.nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+.nav-links a {
+  color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;
+  transition: color 0.3s; position: relative;
+}
+.nav-links a:hover { color: var(--text-primary); }
+.nav-links a::after {
+  content: ''; position: absolute; bottom: -4px; right: 0; width: 0; height: 2px;
+  background: var(--gradient); transition: width 0.3s;
+}
+.nav-links a:hover::after { width: 100%; }
+.nav-cta {
+  background: var(--gradient); color: #fff !important; padding: 0.5rem 1.2rem;
+  border-radius: 8px; font-weight: 600; font-size: 0.85rem !important;
+  transition: transform 0.3s, box-shadow 0.3s !important;
+}
+.nav-cta::after { display: none !important; }
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
+
+.mobile-toggle { display: none; background: none; border: none; color: var(--text-primary); cursor: pointer; padding: 8px; }
+
+/* ========== HERO ========== */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 120px 2rem 80px;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 50%, rgba(139,92,246,0.08) 0%, transparent 50%);
+  animation: heroGlow 15s ease-in-out infinite alternate;
+}
+@keyframes heroGlow {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-5%, 5%) scale(1.1); }
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(148,163,184,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+}
+.hero-content { position: relative; z-index: 2; max-width: 800px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--gradient-subtle);
+  border: 1px solid var(--border);
+  padding: 0.4rem 1rem; border-radius: 50px;
+  font-size: 0.8rem; color: var(--text-secondary);
+  margin-bottom: 2rem;
+  animation: fadeInDown 0.8s ease;
+}
+.hero-badge .badge-dot {
+  width: 8px; height: 8px; background: #22c55e; border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 800; line-height: 1.15;
+  margin-bottom: 1.5rem;
+  animation: fadeInUp 0.8s ease 0.1s both;
+}
+.hero h1 .gradient-text {
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-tagline {
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  color: var(--text-secondary); margin-bottom: 2.5rem;
+  max-width: 600px; margin-left: auto; margin-right: auto;
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+.hero-tagline .en { font-size: 0.85em; color: var(--text-muted); font-style: italic; }
+.hero-buttons {
+  display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+  animation: fadeInUp 0.8s ease 0.3s both;
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  background: var(--gradient); color: #fff;
+  padding: 0.9rem 2rem; border-radius: 12px;
+  font-size: 1rem; font-weight: 600; text-decoration: none;
+  border: none; cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  font-family: var(--font-sans);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(59,130,246,0.35);
+}
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  background: transparent; color: var(--text-secondary);
+  padding: 0.9rem 2rem; border-radius: 12px;
+  font-size: 1rem; font-weight: 500; text-decoration: none;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: all 0.3s;
+  font-family: var(--font-sans);
+}
+.btn-secondary:hover {
+  color: var(--text-primary); border-color: var(--border-hover);
+  background: rgba(255,255,255,0.03);
+}
+
+/* ========== FLOATING PARTICLES ========== */
+.particles {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1;
+}
+.particle {
+  position: absolute; width: 4px; height: 4px;
+  background: rgba(59,130,246,0.3); border-radius: 50%;
+  animation: float linear infinite;
+}
+@keyframes float {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+}
+
+/* ========== SECTION COMMON ========== */
+section { padding: 100px 2rem; position: relative; }
+.section-header { text-align: center; margin-bottom: 4rem; }
+.section-header h2 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700;
+  margin-bottom: 1rem;
+}
+.section-header p { color: var(--text-secondary); max-width: 600px; margin: 0 auto; font-size: 1.05rem; }
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* ========== FEATURES GRID ========== */
+.features { background: var(--bg-primary); }
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.2rem;
+}
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.8rem;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative; overflow: hidden;
+  cursor: default;
+}
+.feature-card::before {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%;
+  background: var(--gradient-subtle); opacity: 0;
+  transition: opacity 0.4s;
+}
+.feature-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+.feature-card:hover::before { opacity: 1; }
+.feature-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 1rem;
+  position: relative; z-index: 1;
+}
+.feature-icon.blue { background: var(--blue-glow); color: var(--blue); }
+.feature-icon.purple { background: var(--purple-glow); color: var(--purple); }
+.feature-card h3 {
+  font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem;
+  position: relative; z-index: 1;
+}
+.feature-card h3 .en {
+  font-size: 0.8rem; color: var(--text-muted); font-weight: 400;
+  display: block; margin-top: 2px; font-family: var(--font-mono); direction: ltr; text-align: right;
+}
+.feature-card p {
+  color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;
+  position: relative; z-index: 1;
+}
+
+/* ========== STATS ========== */
+.stats {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
+  text-align: center;
+}
+.stat-item { padding: 2rem 1rem; }
+.stat-number {
+  font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 800;
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; line-height: 1.2;
+}
+.stat-label {
+  color: var(--text-secondary); font-size: 1rem; margin-top: 0.5rem;
+}
+
+/* ========== ARCHITECTURE ========== */
+.architecture { background: var(--bg-primary); }
+.arch-diagram {
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  max-width: 700px; margin: 0 auto;
+}
+.arch-layer {
+  width: 100%; padding: 2rem 2.5rem;
+  border-radius: var(--radius-lg);
+  text-align: center; position: relative;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.arch-layer:hover { transform: scale(1.02); }
+.arch-layer.ui {
+  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04));
+  border: 1px solid rgba(59,130,246,0.2);
+}
+.arch-layer.engine {
+  background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04));
+  border: 1px solid rgba(139,92,246,0.2);
+}
+.arch-layer.math {
+  background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04));
+  border: 1px solid rgba(34,197,94,0.2);
+}
+.arch-layer h3 {
+  font-size: 1.2rem; font-weight: 700; margin-bottom: 0.3rem;
+}
+.arch-layer .en {
+  font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); direction: ltr;
+}
+.arch-layer .layer-desc {
+  color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;
+}
+.arch-arrow {
+  display: flex; flex-direction: column; align-items: center; padding: 0.6rem 0;
+  color: var(--text-muted);
+}
+.arch-arrow .arrow-line {
+  width: 2px; height: 28px; background: linear-gradient(to bottom, var(--blue), var(--purple));
+  position: relative;
+}
+.arch-arrow .arrow-line::after {
+  content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 8px solid var(--purple);
+}
+.arch-modules {
+  display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 0.8rem;
+}
+.arch-module {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  padding: 0.3rem 0.8rem; border-radius: 6px;
+  font-size: 0.75rem; color: var(--text-secondary);
+  font-family: var(--font-mono); direction: ltr;
+}
+
+/* ========== TECH STACK ========== */
+.techstack { background: var(--bg-secondary); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.tech-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.tech-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem;
+  text-align: center; transition: all 0.3s;
+  cursor: default;
+}
+.tech-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.tech-logo {
+  width: 56px; height: 56px; margin: 0 auto 1rem;
+  border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 700;
+}
+.tech-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.2rem; }
+.tech-card p { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ========== DOWNLOAD ========== */
+.download { background: var(--bg-primary); }
+.download-card {
+  max-width: 700px; margin: 0 auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.download-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--gradient);
+}
+.download-card h3 { font-size: 1.6rem; font-weight: 700; margin-bottom: 1rem; }
+.download-card p { color: var(--text-secondary); margin-bottom: 2rem; line-height: 1.8; }
+.sys-req {
+  display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 2.5rem; color: var(--text-secondary); font-size: 0.9rem;
+}
+.sys-req span { display: flex; align-items: center; gap: 0.4rem; }
+.sys-req .check { color: #22c55e; }
+
+/* ========== FOOTER ========== */
+.footer {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+.footer-content {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+}
+.footer-copy { color: var(--text-muted); font-size: 0.85rem; }
+.footer-links { display: flex; gap: 1.5rem; }
+.footer-links a {
+  color: var(--text-secondary); text-decoration: none; font-size: 0.85rem;
+  transition: color 0.3s; display: flex; align-items: center; gap: 0.4rem;
+}
+.footer-links a:hover { color: var(--blue); }
+
+/* ========== ANIMATIONS ========== */
+.reveal {
+  opacity: 0; transform: translateY(40px);
+  transition: opacity 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.reveal.visible {
+  opacity: 1; transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.05s; }
+.reveal-delay-2 { transition-delay: 0.1s; }
+.reveal-delay-3 { transition-delay: 0.15s; }
+.reveal-delay-4 { transition-delay: 0.2s; }
+.reveal-delay-5 { transition-delay: 0.25s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex; flex-direction: column;
+    position: absolute; top: 64px; left: 0; right: 0;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(20px);
+    padding: 1.5rem 2rem; gap: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-toggle { display: block; }
+  section { padding: 60px 1.2rem; }
+  .features-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .tech-grid { grid-template-columns: repeat(3, 1fr); }
+  .download-card { padding: 2rem 1.5rem; }
+  .sys-req { flex-direction: column; align-items: center; }
+  .footer-content { flex-direction: column; text-align: center; }
+  .hero { padding: 100px 1.2rem 60px; }
+}
+@media (max-width: 480px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .tech-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+}
+
+/* ========== SVG ICONS (inline) ========== */
+.icon-svg { width: 24px; height: 24px; display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- ========== NAVBAR ========== -->
+<nav class="navbar" id="navbar">
+  <a href="#" class="nav-logo">
+    <span class="logo-icon">JF</span>
+    JurisFinanceAI
+  </a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#features">ویژگی‌ها</a></li>
+    <li><a href="#stats">آمار</a></li>
+    <li><a href="#architecture">معماری</a></li>
+    <li><a href="#techstack">تکنولوژی</a></li>
+    <li><a href="#download" class="nav-cta">دانلود</a></li>
+  </ul>
+  <button class="mobile-toggle" id="mobileToggle" aria-label="منو">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="particles" id="particles"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      نسخه ۳.۰.۰ منتشر شد — <span style="direction:ltr">v3.0.0 Stable</span>
+    </div>
+    <h1>
+      <span class="gradient-text">جوریس فایننس ای‌آی</span>
+    </h1>
+    <p class="hero-tagline">
+      هوش مصنوعی پیشرفته برای مالی و حقوق
+      <br><span class="en">Advanced AI for Quantitative Finance & Legal Analytics</span>
+    </p>
+    <div class="hero-buttons">
+      <a href="https://github.com/Ali-Marandi/JurisFinanceAI/releases" class="btn-primary" target="_blank" rel="noopener">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.84c.85.004 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z"/></svg>
+        دانلود نسخه ۳.۰.۰
+      </a>
+      <a href="#features" class="btn-secondary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+        مشاهده ویژگی‌ها
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FEATURES ========== -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>ماژول‌های تحلیلی</h2>
+      <p>۱۵ داشبورد تخصصی برای تحلیل‌های پیشرفته مالی و حقوقی</p>
+    </div>
+    <div class="features-grid">
+      <!-- 1. Portfolio -->
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        </div>
+        <h3>پورتفولیو <span class="en">Portfolio</span></h3>
+        <p>بهینه‌سازی و مدیریت سبد سرمایه‌گذاری با مدل‌های مدرن</p>
+      </div>
+      <!-- 2. Derivatives -->
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><path d="M9 20v-6h6v6"/></svg>
+        </div>
+        <h3>ابزار مشتقه <span class="en">Derivatives</span></h3>
+        <p>قیمت‌گذاری اختیار معامله و قراردادهای آتی با مدل‌های متنوع</p>
+      </div>
+      <!-- 3. Risk -->
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5.25-3.4 10.15-8 12-4.6-1.85-8-6.75-8-12V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>مدیریت ریسک <span class="en">Risk Models</span></h3>
+        <p>ارزیابی و اندازه‌گیری ریسک با VaR، CVaR و استرس تستینگ</p>
+      </div>
+      <!-- 4. Time Series -->
+      <div class="feature-card reveal reveal-delay-4">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h3>سری زمانی <span class="en">Time Series</span></h3>
+        <p>پیش‌بینی و تحلیل سری‌های زمانی مالی با ARIMA و GARCH</p>
+      </div>
+      <!-- 5. Fuzzy -->
+      <div class="feature-card reveal reveal-delay-5">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+        <h3>سیستم فازی <span class="en">Fuzzy Systems</span></h3>
+        <p>تحلیل تصمیم‌گیری با منطق فازی برای شرایط عدم قطعیت</p>
+      </div>
+      <!-- 6. Network -->
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5" y2="16"/><line x1="12" y1="8" x2="19" y2="16"/><line x1="8" y1="19" x2="16" y2="19"/></svg>
+        </div>
+        <h3>تحلیل شبکه <span class="en">Network Analysis</span></h3>
+        <p>مدل‌سازی روابط بین نهادهای مالی و شناسایی الگوهای شبکه‌ای</p>
+      </div>
+      <!-- 7. Behavioral -->
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+        <h3>مالی رفتاری <span class="en">Behavioral Finance</span></h3>
+        <p>تحلیل سوگیری‌های شناختی و رفتار غیرمنطقی سرمایه‌گذاران</p>
+      </div>
+      <!-- 8. Monte Carlo -->
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <h3>مونت کارلو <span class="en">Monte Carlo</span></h3>
+        <p>شبیه‌سازی تصادفی هزاران سناریو برای ارزیابی ریسک و قیمت‌گذاری</p>
+      </div>
+      <!-- 9. Interest Rates -->
+      <div class="feature-card reveal reveal-delay-4">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M3 3v18h18"/><polyline points="18 9 13 14 9 10 3 16"/></svg>
+        </div>
+        <h3>نرخ بهره <span class="en">Interest Rates</span></h3>
+        <p>مدل‌سازی ساختار سطوح نرخ بهره و منحنی بازده</p>
+      </div>
+      <!-- 10. Topological -->
+      <div class="feature-card reveal reveal-delay-5">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
+        </div>
+        <h3>تحلیل توپولوژیک <span class="en">Topological Data</span></h3>
+        <p>کشف ساختارهای پنهان داده با آنالیز توپولوژیک</p>
+      </div>
+      <!-- 11. Generative -->
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5.5 6.5l13 11"/><path d="M5.5 17.5l13-11"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        </div>
+        <h3>مدل‌های مولد <span class="en">Generative Models</span></h3>
+        <p>تولید داده‌های مصنوعی مالی با مدل‌های تولیدی پیشرفته</p>
+      </div>
+      <!-- 12. Explainability -->
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3>تفسیرپذیری <span class="en">Explainability</span></h3>
+        <p>توضیح و تفسیر تصمیمات مدل‌های هوش مصنوعی به زبان ساده</p>
+      </div>
+      <!-- 13. Quantum -->
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></svg>
+        </div>
+        <h3>محاسبات کوانتومی <span class="en">Quantum Computing</span></h3>
+        <p>شبیه‌سازی الگوریتم‌های کوانتومی برای بهینه‌سازی مالی</p>
+      </div>
+      <!-- 14. NLP -->
+      <div class="feature-card reveal reveal-delay-4">
+        <div class="feature-icon purple">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <h3>پردازش زبان <span class="en">NLP Engine</span></h3>
+        <p>تحلیل متون حقوقی و اخبار مالی با پردازش زبان طبیعی</p>
+      </div>
+      <!-- 15. GPU -->
+      <div class="feature-card reveal reveal-delay-5">
+        <div class="feature-icon blue">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+        </div>
+        <h3>پردازش GPU <span class="en">GPU Compute</span></h3>
+        <p>شتاب محاسبات سنگین با بهره‌گیری از قدرت پردازشگر گرافیکی</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== STATS ========== -->
+<section class="stats" id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item reveal">
+        <div class="stat-number" data-target="20" data-suffix="+">0</div>
+        <div class="stat-label">ماژول تحلیلی</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-1">
+        <div class="stat-number" data-target="15" data-suffix="">0</div>
+        <div class="stat-label">تب داشبورد</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-2">
+        <div class="stat-number" data-target="17" data-suffix="">0</div>
+        <div class="stat-label">کلاس پایتون</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-3">
+        <div class="stat-number" data-target="0" data-suffix="">0</div>
+        <div class="stat-label">وابستگی اضافی</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ARCHITECTURE ========== -->
+<section class="architecture" id="architecture">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>معماری سه‌لایه‌ای</h2>
+      <p>طراحی ماژولار و مقیاس‌پذیر برای حداکثر کارایی</p>
+    </div>
+    <div class="arch-diagram">
+      <div class="arch-layer ui reveal">
+        <h3>🖥️ لایه رابط کاربری <span class="en">UI Layer</span></h3>
+        <div class="layer-desc">داشبورد تعاملی با ۱۵ تب تخصصی</div>
+        <div class="arch-modules">
+          <span class="arch-module">PyQt6</span>
+          <span class="arch-module">Dashboard</span>
+          <span class="arch-module">Charts</span>
+          <span class="arch-module">Settings</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow reveal">
+        <div class="arrow-line"></div>
+      </div>
+
+      <div class="arch-layer engine reveal">
+        <h3>⚙️ موتور کمی <span class="en">Quant Engine</span></h3>
+        <div class="layer-desc">موتور پردازش و تحلیل داده‌های مالی</div>
+        <div class="arch-modules">
+          <span class="arch-module">Portfolio</span>
+          <span class="arch-module">Risk</span>
+          <span class="arch-module">Derivatives</span>
+          <span class="arch-module">Monte Carlo</span>
+          <span class="arch-module">NLP</span>
+          <span class="arch-module">GPU</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow reveal">
+        <div class="arrow-line"></div>
+      </div>
+
+      <div class="arch-layer math reveal">
+        <h3>📐 کتابخانه‌های ریاضی <span class="en">Math Libraries</span></h3>
+        <div class="layer-desc">پایه محاسباتی قوی و بهینه</div>
+        <div class="arch-modules">
+          <span class="arch-module">NumPy</span>
+          <span class="arch-module">SciPy</span>
+          <span class="arch-module">Matplotlib</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TECH STACK ========== -->
+<section class="techstack" id="techstack">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>تکنولوژی‌ها</h2>
+      <p>ساخته شده با بهترین ابزارهای متن‌باز</p>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-card reveal reveal-delay-1">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #2ecc71, #27ae60); color: #fff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h4>PyQt6</h4>
+        <p>رابط کاربری</p>
+      </div>
+      <div class="tech-card reveal reveal-delay-2">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #4c8cb5, #013243); color: #fff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        </div>
+        <h4>NumPy</h4>
+        <p>محاسبات آرایه‌ای</p>
+      </div>
+      <div class="tech-card reveal reveal-delay-3">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff;">Sc</div>
+        <h4>SciPy</h4>
+        <p>محاسبات علمی</p>
+      </div>
+      <div class="tech-card reveal reveal-delay-4">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #11557C, #11557C); color: #fff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h4>Matplotlib</h4>
+        <p>نمودار و تصویرسازی</p>
+      </div>
+      <div class="tech-card reveal reveal-delay-5">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #2b3137, #0d1117); color: #fff; border: 1px solid #30363d;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+        </div>
+        <h4>GitHub Actions</h4>
+        <p>CI/CD خودکار</p>
+      </div>
+      <div class="tech-card reveal reveal-delay-1">
+        <div class="tech-logo" style="background: linear-gradient(135deg, #3776AB, #FFD43B); color: #fff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h4>PyInstaller</h4>
+        <p>بسته‌بندی نرم‌افزار</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== DOWNLOAD ========== -->
+<section class="download" id="download">
+  <div class="container">
+    <div class="download-card reveal">
+      <h3>📥 دانلود JurisFinanceAI</h3>
+      <p>
+        نسخه ۳.۰.۰ آماده دانلود است. بدون نیاز به نصب پایتون — فقط دانلود و اجرا کنید.
+      </p>
+      <div class="sys-req">
+        <span><span class="check">✓</span> ویندوز ۱۰ به بالا</span>
+        <span><span class="check">✓</span> بدون نصب اضافی</span>
+        <span><span class="check">✓</span> متن‌باز و رایگان</span>
+      </div>
+      <a href="https://github.com/Ali-Marandi/JurisFinanceAI/releases" class="btn-primary" target="_blank" rel="noopener" style="font-size: 1.1rem; padding: 1rem 2.5rem;">
+        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.84c.85.004 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z"/></svg>
+        دانلود از GitHub Releases
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-copy">
+      © ۲۰۲۵ Ali Marandi — JurisFinanceAI v3.0.0
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/Ali-Marandi/JurisFinanceAI" target="_blank" rel="noopener">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+        GitHub
+      </a>
+      <a href="https://github.com/Ali-Marandi/JurisFinanceAI/releases" target="_blank" rel="noopener">
+        Releases
+      </a>
+    </div>
+  </div>
+</footer>
+
+<!-- ========== JAVASCRIPT ========== -->
+<script>
+(function() {
+  'use strict';
+
+  // ---- Navbar scroll effect ----
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', function() {
+    navbar.classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  // ---- Mobile menu toggle ----
+  const mobileToggle = document.getElementById('mobileToggle');
+  const navLinks = document.getElementById('navLinks');
+  mobileToggle.addEventListener('click', function() {
+    navLinks.classList.toggle('open');
+  });
+  // Close on link click
+  navLinks.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function() {
+      navLinks.classList.remove('open');
+    });
+  });
+
+  // ---- Smooth scroll ----
+  document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // ---- Scroll reveal ----
+  const revealEls = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        // Trigger counter animation for stat numbers
+        const counter = entry.target.querySelector('.stat-number');
+        if (counter && !counter.dataset.animated) {
+          animateCounter(counter);
+          counter.dataset.animated = 'true';
+        }
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  revealEls.forEach(function(el) { revealObserver.observe(el); });
+
+  // ---- Animated counters ----
+  function animateCounter(el) {
+    var target = parseInt(el.dataset.target, 10);
+    var suffix = el.dataset.suffix || '';
+    var duration = 1500;
+    var start = 0;
+    var startTime = null;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / duration, 1);
+      // ease-out cubic
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var current = Math.floor(eased * target);
+      el.textContent = current + suffix;
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = target + suffix;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ---- Floating particles ----
+  var particlesContainer = document.getElementById('particles');
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!prefersReduced && particlesContainer) {
+    for (var i = 0; i < 30; i++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = (Math.random() * 100) + '%';
+      p.style.width = (Math.random() * 4 + 2) + 'px';
+      p.style.height = p.style.width;
+      p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+      p.style.animationDelay = (Math.random() * 15) + 's';
+      p.style.opacity = (Math.random() * 0.5 + 0.1);
+      if (Math.random() > 0.5) {
+        p.style.background = 'rgba(139, 92, 246, 0.3)';
+      }
+      particlesContainer.appendChild(p);
+    }
+  }
+
+  // ---- Active nav link highlight ----
+  var sections = document.querySelectorAll('section[id]');
+  var navAnchors = navLinks.querySelectorAll('a[href^="#"]');
+  window.addEventListener('scroll', function() {
+    var scrollPos = window.scrollY + 120;
+    sections.forEach(function(section) {
+      var top = section.offsetTop;
+      var height = section.offsetHeight;
+      var id = section.getAttribute('id');
+      if (scrollPos >= top && scrollPos < top + height) {
+        navAnchors.forEach(function(a) {
+          a.classList.remove('active');
+          if (a.getAttribute('href') === '#' + id) {
+            a.classList.add('active');
+          }
+        });
+      }
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>

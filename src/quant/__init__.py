@@ -16,6 +16,10 @@ Modules:
     quantum         - QAOA, quantum MC pricing, quantum kernels, VQE
     nlp_engine      - Sentiment, NER, summarization, RAG retrieval
     gpu_compute     - Accelerated MC, GARCH, correlation, batch pricing
+    data_import    - CSV/Excel data import, validation, demo generation
+    report_export  - PDF/Excel/CSV report generation
+    live_data      - Yahoo Finance & Binance live market data
+
 """
 
 from .portfolio import PortfolioOptimizer, FuzzyNumber
@@ -33,6 +37,10 @@ from .explainability import ExplainabilityEngine
 from .quantum import QuantumFinanceEngine
 from .nlp_engine import FinancialNLPEngine
 from .gpu_compute import GPUAccelerator
+from .data_import import DataImporter
+from .report_export import ReportExporter
+from .live_data import LiveDataEngine
+
 
 __all__ = [
     'PortfolioOptimizer', 'FuzzyNumber',
@@ -50,4 +58,7 @@ __all__ = [
     'QuantumFinanceEngine',
     'FinancialNLPEngine',
     'GPUAccelerator',
+    'DataImporter',
+    'ReportExporter',
+    'LiveDataEngine',
 ]
