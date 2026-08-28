@@ -12,13 +12,19 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
                              QPushButton, QTabWidget, QTableWidget, QTableWidgetItem,
                              QHeaderView, QComboBox, QDoubleSpinBox, QSpinBox,
                              QTextEdit, QGroupBox, QFormLayout, QAbstractItemView,
-                             QSplitter, QScrollArea, QGridLayout)
+                             QSplitter, QScrollArea, QGridLayout, QCheckBox)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 from ..quant import (PortfolioOptimizer, FuzzyNumber, DerivativesPricer,
                      RiskEngine, TimeSeriesAnalyzer, FuzzyCreditScorer,
                      NetworkAnalyzer, BehavioralAnalyzer, MonteCarloEngine,
                      InterestRateModel)
+from ..quant.topological import TopologicalAnalyzer
+from ..quant.generative import GenerativeModel
+from ..quant.explainability import ExplainabilityEngine
+from ..quant.quantum import QuantumFinanceEngine
+from ..quant.nlp_engine import FinancialNLPEngine
+from ..quant.gpu_compute import GPUAccelerator
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1669,11 +1675,794 @@ class InterestRateTab(BaseTab):
         self.canvas.draw()
 
 
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 10: Topological Data Analysis  —  تحلیل توپولوژیکی
+# ═══════════════════════════════════════════════════════════════
+class TopologicalTab(BaseTab):
+    class TopologicalWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, returns, window_size):
+            super().__init__()
+            self.returns = returns
+            self.window_size = window_size
+
+        def run(self):
+            try:
+                engine = TopologicalAnalyzer()
+                result = engine.full_analysis(returns=self.returns)
+                self.finished.emit(result)
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.sp_window = _ispin(60, 20, 200, 5)
+        self._topo_cache = None
+        super().__init__(parent)
+        self.header.setText("\U0001f52d \u062a\u062d\u0644\u06cc\u0644 \u062a\u0648\u067e\u0648\u0644\u0648\u0698\u06cc\u06a9\u06cc")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u062a\u062d\u0644\u06cc\u0644 \u062a\u0648\u067e\u0648\u0644\u0648\u0698\u06cc\u06a9\u06cc"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u0627\u0646\u062f\u0627\u0632\u0647 \u067e\u0646\u062c\u0631\u0647:"), self.sp_window)
+
+    def _generate_returns(self, n=500, seed=42):
+        np.random.seed(seed)
+        r = np.random.normal(0.0005, 0.02, n)
+        r += 0.002 * np.sin(np.arange(n) / 30)
+        return r.tolist()
+
+    def _demo_params(self):
+        returns = self._generate_returns(500, seed=42)
+        self._topo_cache = returns
+        return returns
+
+    def _get_params(self):
+        returns = self._generate_returns(500, seed=None)
+        self._topo_cache = returns
+        return returns
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        self._worker = self.TopologicalWorker(params, self.sp_window.value())
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "topo_full"
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        display = {k: v for k, v in result.items()
+                   if not isinstance(v, (list, np.ndarray))}
+        populate_table(self.results_table, display)
+
+        ax1 = self.fig.add_subplot(121)
+        ax2 = self.fig.add_subplot(122)
+
+        # Persistence diagram bar chart
+        betti = result.get("betti_numbers", {})
+        if betti:
+            dims = list(betti.keys())
+            vals = list(betti.values())
+            colors_b = [ACCENT_COLOR, PURPLE_COLOR, SUCCESS_COLOR, ERROR_COLOR, MUTED_TEXT][:len(dims)]
+            ax1.bar([f"H{d}" for d in dims], vals, color=colors_b, edgecolor=GRID_COLOR)
+            ax1.set_title("\u0627\u0639\u062f\u0627\u062f \u0628\u062a\u06cc", fontsize=12, color=TEXT_COLOR)
+            for bar, val in zip(ax1.patches, vals):
+                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+                        f"{val:.1f}", ha="center", va="bottom", color=TEXT_COLOR, fontsize=10)
+        else:
+            ax1.text(0.5, 0.5, "\u062f\u0627\u062f\u0647\u200c\u0627\u06cc \u0628\u0631\u0627\u06cc \u0646\u0645\u0648\u062f\u0627\u0631 \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f",
+                       transform=ax1.transAxes, ha="center", va="center", color=MUTED_TEXT, fontsize=11)
+        style_axes(ax1)
+
+        # Hurst / Lyapunov over rolling windows
+        hurst_vals = result.get("hurst_rolling", [])
+        lyap_vals = result.get("lyapunov_rolling", [])
+        if hurst_vals or lyap_vals:
+            x = range(len(hurst_vals) if hurst_vals else len(lyap_vals))
+            if hurst_vals:
+                ax2.plot(list(x), hurst_vals, color=ACCENT_COLOR, linewidth=1.5, label="Hurst")
+            if lyap_vals:
+                ax2.plot(list(x), lyap_vals, color=PURPLE_COLOR, linewidth=1.5, label="Lyapunov")
+            ax2.axhline(y=0.5, color=MUTED_TEXT, linestyle="--", alpha=0.5)
+            ax2.set_title("\u0646\u0645\u0648\u062f\u0627\u0631 \u06af\u0630\u0631\u0634\u0645\u0627\u0646", fontsize=12, color=TEXT_COLOR)
+            ax2.legend(facecolor=CARD_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
+        else:
+            entropy = result.get("persistence_entropy", 0)
+            regime = result.get("market_regime", "\u0646\u0627\u0645\u0634\u062e\u0635")
+            ax2.bar(["\u0622\u0646\u062a\u0631\u0648\u067e\u06cc", "\u0631\u0698\u06cc\u0645"], [entropy, 1-entropy],
+                   color=[ACCENT_COLOR, PURPLE_COLOR], edgecolor=GRID_COLOR)
+            ax2.set_title(f"\u0622\u0646\u062a\u0631\u0648\u067e\u06cc: {entropy:.4f} | {regime}", fontsize=11, color=TEXT_COLOR)
+        style_axes(ax2)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 11: Generative Models  —  \u0645\u0627\u0634\u06cc\u0646 \u0698\u0646\u0631\u0627\u062a\u0648\u0631
+# ═══════════════════════════════════════════════════════════════
+class GenerativeTab(BaseTab):
+    class GenerativeWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, returns, n_scenarios, severity, n_diffusion_steps):
+            super().__init__()
+            self.returns = returns
+            self.n_scenarios = n_scenarios
+            self.severity = severity
+            self.n_diffusion_steps = n_diffusion_steps
+
+        def run(self):
+            try:
+                engine = GenerativeModel()
+                scenarios = engine.diffusion_scenarios(
+                    returns=self.returns,
+                    n_scenarios=self.n_scenarios,
+                    n_steps=self.n_diffusion_steps,
+                )
+                stress = engine.stress_scenarios(
+                    returns=self.returns,
+                    severity=self.severity,
+                    n_scenarios=self.n_scenarios // 2,
+                )
+                self.finished.emit({"diffusion": scenarios, "stress": stress})
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.sp_n_scenarios = _ispin(1000, 100, 10000, 100)
+        self.cb_severity = _combo(["\u062e\u0641\u06cc\u0641", "\u0645\u062a\u0648\u0633\u0637", "\u0634\u062f\u06cc\u062f", "\u0628\u0633\u06cc\u0627\u0631 \u0634\u062f\u06cc\u062f"], 1)
+        self.sp_n_diff = _ispin(100, 10, 500, 10)
+        self._gen_cache = None
+        super().__init__(parent)
+        self.header.setText("\U0001f300 \u0645\u0627\u0634\u06cc\u0646 \u0698\u0646\u0631\u0627\u062a\u0648\u0631")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u0645\u062f\u0644 \u0698\u0646\u0631\u0627\u062a\u06cc\u0648"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u0633\u0646\u0627\u0631\u06cc\u0648\u0647\u0627:"), self.sp_n_scenarios)
+        self.input_form.addRow(_label("\u0634\u062f\u062a \u0627\u0633\u062a\u0631\u0633:"), self.cb_severity)
+        self.input_form.addRow(_label("\u0645\u0631\u0627\u062d\u0644 \u062f\u06cc\u0641\u06cc\u0648\u0698\u0646:"), self.sp_n_diff)
+
+    def _generate_returns(self, n=500, seed=42):
+        np.random.seed(seed)
+        return np.random.normal(0.001, 0.02, n).tolist()
+
+    def _demo_params(self):
+        returns = self._generate_returns(500, seed=42)
+        self._gen_cache = returns
+        return returns
+
+    def _get_params(self):
+        returns = self._generate_returns(500, seed=None)
+        self._gen_cache = returns
+        return returns
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        severity_map = ["mild", "moderate", "severe", "extreme"]
+        self._worker = self.GenerativeWorker(
+            params, self.sp_n_scenarios.value(),
+            severity_map[self.cb_severity.currentIndex()],
+            self.sp_n_diff.value(),
+        )
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "generative"
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        diff = result.get("diffusion", {})
+        stress = result.get("stress", {})
+
+        # Build scenario stats table
+        table_data = []
+        if isinstance(diff, dict) and ("mean" in diff or "scenarios" in diff):
+            table_data.append({"\u0646\u0648\u0639": "\u062f\u06cc\u0641\u06cc\u0648\u0698\u0646",
+                              "\u0645\u06cc\u0627\u0646\u06af\u06cc\u0646": diff.get("mean", 0),
+                              "\u0627\u0646\u062d\u0631\u0627\u0641 \u0645\u0639\u06cc\u0627\u0631": diff.get("std", 0),
+                              "\u062d\u062f\u0627\u0642\u0644": diff.get("min", 0),
+                              "\u062d\u062f\u0627\u06a9\u062b\u0631": diff.get("max", 0)})
+        if isinstance(stress, dict) and ("mean" in stress or "scenarios" in stress):
+            table_data.append({"\u0646\u0648\u0639": "\u0627\u0633\u062a\u0631\u0633",
+                              "\u0645\u06cc\u0627\u0646\u06af\u06cc\u0646": stress.get("mean", 0),
+                              "\u0627\u0646\u062d\u0631\u0627\u0641 \u0645\u0639\u06cc\u0627\u0631": stress.get("std", 0),
+                              "\u062d\u062f\u0627\u0642\u0644": stress.get("min", 0),
+                              "\u062d\u062f\u0627\u06a9\u062b\u0631": stress.get("max", 0)})
+        if not table_data:
+            table_data = [{k: v for k, v in result.items() if not isinstance(v, (list, np.ndarray))}]
+        populate_table(self.results_table, table_data)
+
+        ax1 = self.fig.add_subplot(121)
+        ax2 = self.fig.add_subplot(122)
+
+        # Histogram: generated vs historical
+        gen_scenarios = diff.get("scenarios", [])
+        hist_returns = self._gen_cache or []
+        if gen_scenarios and hist_returns:
+            gen_flat = np.array(gen_scenarios).flatten() if isinstance(gen_scenarios[0], list) else np.array(gen_scenarios)
+            ax1.hist(hist_returns, bins=40, alpha=0.5, color=ACCENT_COLOR, label="\u062a\u0627\u0631\u06cc\u062e\u06cc", density=True)
+            ax1.hist(gen_flat, bins=40, alpha=0.5, color=PURPLE_COLOR, label="\u0698\u0646\u0631\u0627\u062a\u0647 \u0634\u062f\u0647", density=True)
+            ax1.set_title("\u062a\u0648\u0632\u06cc\u0639 \u0633\u0646\u0627\u0631\u06cc\u0648\u0647\u0627", fontsize=12, color=TEXT_COLOR)
+            ax1.legend(facecolor=CARD_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
+        style_axes(ax1)
+
+        # Stress scenario paths
+        stress_paths = stress.get("paths", stress.get("scenarios", []))
+        if stress_paths and len(stress_paths) > 0:
+            P = np.array(stress_paths)
+            if P.ndim == 1:
+                P = P.reshape(1, -1)
+            for i in range(min(50, P.shape[0])):
+                ax2.plot(P[i], color=ERROR_COLOR, alpha=0.3, linewidth=0.5)
+            ax2.plot(P.mean(axis=0), color=SUCCESS_COLOR, linewidth=2, label="\u0645\u06cc\u0627\u0646\u06af\u06cc\u0646")
+            ax2.set_title("\u0645\u0633\u06cc\u0631\u0647\u0627\u06cc \u0627\u0633\u062a\u0631\u0633", fontsize=12, color=TEXT_COLOR)
+            ax2.legend(facecolor=CARD_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
+        else:
+            ax2.text(0.5, 0.5, "\u062f\u0627\u062f\u0647\u200c\u0627\u06cc \u0628\u0631\u0627\u06cc \u0646\u0645\u0648\u062f\u0627\u0631 \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f",
+                   transform=ax2.transAxes, ha="center", va="center", color=MUTED_TEXT, fontsize=11)
+        style_axes(ax2)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 12: Explainability  —  \u062a\u0641\u0633\u06cc\u0631\u067e\u0630\u06cc\u0631\u06cc
+# ═══════════════════════════════════════════════════════════════
+class ExplainabilityTab(BaseTab):
+    class ExplainWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, features, target, n_perturbations, kernel_width):
+            super().__init__()
+            self.features = features
+            self.target = target
+            self.n_perturbations = n_perturbations
+            self.kernel_width = kernel_width
+
+        def run(self):
+            try:
+                engine = ExplainabilityEngine()
+                shap = engine.shap_values(self.features, self.target)
+                lime = engine.lime_explanation(self.features, self.target, self.n_perturbations, self.kernel_width)
+                imp = engine.feature_importance(self.features, self.target)
+                drift = engine.model_drift_detection(self.features, self.target)
+                self.finished.emit({"shap": shap, "lime": lime, "importance": imp, "drift": drift})
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.sp_n_pert = _ispin(1000, 100, 5000, 100)
+        self.sp_kernel = _dspin(1.0, 0.1, 5.0, 0.1, 2)
+        self._exp_cache = None
+        super().__init__(parent)
+        self.header.setText("\U0001f50d \u062a\u0641\u0633\u06cc\u0631\u067e\u0630\u06cc\u0631\u06cc")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u062a\u0641\u0633\u06cc\u0631\u067e\u0630\u06cc\u0631\u06cc \u0645\u062f\u0644"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u0627\u062e\u062a\u0644\u0627\u0644\u0627\u062a:"), self.sp_n_pert)
+        self.input_form.addRow(_label("\u0639\u0631\u0636 \u0647\u0633\u062a\u0647 (LIME):"), self.sp_kernel)
+
+    def _generate_data(self, n=200, seed=42):
+        np.random.seed(seed)
+        features = np.random.randn(n, 5)
+        weights = np.array([0.3, -0.5, 0.2, 0.4, -0.1])
+        target = (features @ weights + np.random.randn(n) * 0.1).tolist()
+        self._exp_cache = {"features": features, "target": target, "names": [f"\u0648\u06cc\u0698\u06af\u06cc {i+1}" for i in range(5)]}
+        return features, target
+
+    def _demo_params(self):
+        features, target = self._generate_data(200, seed=42)
+        return features, target
+
+    def _get_params(self):
+        features, target = self._generate_data(200, seed=None)
+        return features, target
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        features, target = params
+        self._worker = self.ExplainWorker(features, target, self.sp_n_pert.value(), self.sp_kernel.value())
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "explainability"
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        cache = self._exp_cache or {}
+        names = cache.get("names", [f"F{i+1}" for i in range(5)])
+
+        # SHAP table
+        shap = result.get("shap", {})
+        imp = result.get("importance", {})
+        table_data = []
+        if isinstance(shap, dict) and shap:
+            vals = shap.get("values", shap.get("shap_values", list(shap.values())))
+            if isinstance(vals, (list, np.ndarray)) and len(vals) == len(names):
+                table_data = [{"\u0648\u06cc\u0698\u06af\u06cc": names[i], "SHAP": vals[i]} for i in range(len(names))]
+            elif isinstance(shap, dict):
+                table_data = [{"\u0648\u06cc\u0698\u06af\u06cc": k, "SHAP": v} for k, v in shap.items()]
+        if not table_data and isinstance(imp, dict) and imp:
+            table_data = [{"\u0648\u06cc\u0698\u06af\u06cc": k, "\u0627\u0647\u0645\u06cc\u062a": v} for k, v in imp.items()]
+        if not table_data:
+            table_data = [{k: v for k, v in result.items() if not isinstance(v, (list, np.ndarray, dict))}]
+        populate_table(self.results_table, table_data)
+
+        ax1 = self.fig.add_subplot(121)
+        ax2 = self.fig.add_subplot(122)
+
+        # SHAP bar chart
+        if isinstance(shap, dict):
+            vals_shap = shap.get("values", list(shap.values()))
+            if isinstance(vals_shap, (list, np.ndarray)) and len(vals_shap) == len(names):
+                colors_shap = [SUCCESS_COLOR if v >= 0 else ERROR_COLOR for v in vals_shap]
+                ax1.barh(names, vals_shap, color=colors_shap, edgecolor=GRID_COLOR)
+                ax1.set_title("\u0645\u0642\u0627\u062f\u06cc\u0631 SHAP", fontsize=12, color=TEXT_COLOR)
+                ax1.axvline(x=0, color=MUTED_TEXT, linestyle="--", alpha=0.5)
+        style_axes(ax1)
+
+        # Feature importance bar chart
+        if isinstance(imp, dict):
+            imp_items = list(imp.items())[:10]
+            if imp_items:
+                imp_names = [item[0] for item in imp_items]
+                imp_vals = [item[1] for item in imp_items]
+                ax2.barh(imp_names, imp_vals, color=PURPLE_COLOR, edgecolor=GRID_COLOR)
+                ax2.set_title("\u0627\u0647\u0645\u06cc\u062a \u0648\u06cc\u0698\u06af\u06cc\u200c\u0647\u0627", fontsize=12, color=TEXT_COLOR)
+        style_axes(ax2)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 13: Quantum Finance  —  \u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc
+# ═══════════════════════════════════════════════════════════════
+class QuantumTab(BaseTab):
+    class QuantumWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, task_name, **kwargs):
+            super().__init__()
+            self.task_name = task_name
+            self.kwargs = kwargs
+
+        def run(self):
+            try:
+                engine = QuantumFinanceEngine()
+                if self.task_name == 'qaoa':
+                    result = engine.qaoa_portfolio(
+                        returns=self.kwargs['returns'],
+                        cov_matrix=self.kwargs['cov_matrix'],
+                        n_qubits=self.kwargs['n_qubits'],
+                        n_layers=self.kwargs['n_layers'],
+                    )
+                elif self.task_name == 'qmc':
+                    result = engine.quantum_monte_carlo_pricing(
+                        S0=self.kwargs['S0'], K=self.kwargs['K'],
+                        T=self.kwargs['T'], r=self.kwargs['r'],
+                        sigma=self.kwargs['sigma'],
+                    )
+                elif self.task_name == 'vqe':
+                    result = engine.variational_quantum_eigenvalue(
+                        cov_matrix=self.kwargs['cov_matrix'],
+                        n_qubits=self.kwargs['n_qubits'],
+                        n_layers=self.kwargs['n_layers'],
+                    )
+                else:
+                    result = {"error": "Unknown task"}
+                self.finished.emit(result)
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.sp_n_qubits = _ispin(6, 2, 12, 1)
+        self.sp_n_layers = _ispin(2, 1, 5, 1)
+        self.sp_budget = _ispin(3, 1, 10, 1)
+        self._q_cache = None
+        super().__init__(parent)
+        self.header.setText("\u269b\ufe0f \u0645\u0627\u0644\u06cc \u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u06a9\u0648\u0628\u06cc\u062a\u0647\u0627:"), self.sp_n_qubits)
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u0644\u0627\u06cc\u0647\u200c\u0647\u0627:"), self.sp_n_layers)
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u062f\u0627\u0631\u0627\u06cc\u06cc (QAOA):"), self.sp_budget)
+
+    def _generate_portfolio_data(self, n=6, seed=42):
+        np.random.seed(seed)
+        mu = np.random.uniform(0.05, 0.20, n)
+        A = np.random.randn(n, n) * 0.1
+        cov = A @ A.T + np.eye(n) * 0.01
+        returns = np.random.multivariate_normal(mu, cov, 252)
+        self._q_cache = {"mu": mu, "cov": cov, "returns": returns}
+        return mu, cov, returns
+
+    def _demo_params(self):
+        mu, cov, returns = self._generate_portfolio_data(6, seed=42)
+        return {"returns": returns, "cov_matrix": cov, "n_qubits": 6, "n_layers": 2,
+                "S0": 100, "K": 105, "T": 1.0, "r": 0.05, "sigma": 0.2}
+
+    def _get_params(self):
+        n = min(self.sp_n_qubits.value(), 6)
+        mu, cov, returns = self._generate_portfolio_data(n, seed=None)
+        return {"returns": returns, "cov_matrix": cov, "n_qubits": self.sp_n_qubits.value(),
+                "n_layers": self.sp_n_layers.value(),
+                "S0": 100, "K": 105, "T": 1.0, "r": 0.05, "sigma": 0.2}
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        self._worker = self.QuantumWorker(task_name, **params)
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "qaoa"
+
+    def run_demo(self):
+        params = self._demo_params()
+        for task in ['qaoa', 'qmc', 'vqe']:
+            self._run_task(task, params)
+            break  # Run QAOA first; others handled via params
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        display = {k: v for k, v in result.items()
+                   if not isinstance(v, (list, np.ndarray))}
+        populate_table(self.results_table, display)
+
+        ax = self.fig.add_subplot(111)
+        # QAOA solution probabilities
+        probs = result.get("probabilities", result.get("solution_probabilities", []))
+        if probs and len(probs) > 0:
+            if isinstance(probs, dict):
+                labels = list(probs.keys())[:10]
+                vals = list(probs.values())[:10]
+            else:
+                labels = [f"|{bin(i)[2:].zfill(self.sp_n_qubits.value())}\u27e9" for i in range(min(16, len(probs)))]
+                vals = list(probs)[:16]
+            colors_q = plt.cm.viridis(np.linspace(0.2, 0.8, len(vals)))
+            ax.bar(range(len(vals)), vals, color=colors_q, edgecolor=GRID_COLOR)
+            ax.set_xticks(range(len(vals)))
+            ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8, color=MUTED_TEXT)
+            ax.set_title("\u0627\u062d\u062a\u0645\u0627\u0644\u0627\u062a \u062d\u0644 QAOA", fontsize=13, color=TEXT_COLOR)
+            ax.set_ylabel("\u0627\u062d\u062a\u0645\u0627\u0644")
+        else:
+            # Show some quantum metric
+            energy = result.get("energy", result.get("eigenvalue", 0))
+            ax.bar(["\u0627\u0646\u0631\u0698\u06cc / \u0645\u0642\u062f\u0627\u0631 \u0648\u06cc\u0698\u0647"], [abs(energy)],
+                   color=ACCENT_COLOR, edgecolor=GRID_COLOR, width=0.3)
+            ax.set_title(f"\u0646\u062a\u06cc\u062c\u0647 \u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc: {energy:.4f}", fontsize=13, color=TEXT_COLOR)
+        style_axes(ax)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 14: Financial NLP  —  \u067e\u0631\u062f\u0627\u0632\u0634 \u0632\u0628\u0627\u0646
+# ═══════════════════════════════════════════════════════════════
+class NLPTab(BaseTab):
+    class NLPWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, text, n_sentences):
+            super().__init__()
+            self.text = text
+            self.n_sentences = n_sentences
+
+        def run(self):
+            try:
+                engine = FinancialNLPEngine()
+                sentiment = engine.sentiment_analysis(self.text)
+                entities = engine.named_entity_recognition(self.text)
+                summary = engine.extractive_summarization(self.text, self.n_sentences)
+                rag = engine.rag_retrieval(self.text)
+                self.finished.emit({"sentiment": sentiment, "entities": entities, "summary": summary, "rag": rag})
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.text_input = QTextEdit()
+        self.text_input.setMaximumHeight(100)
+        self.text_input.setPlaceholderText("\u0645\u062a\u0646 \u0645\u0627\u0644\u06cc \u0631\u0627 \u0648\u0627\u0631\u062f \u06a9\u0646\u06cc\u062f...")
+        self.sp_n_sent = _ispin(3, 1, 10, 1)
+        self._nlp_cache = None
+        super().__init__(parent)
+        self.header.setText("\U0001f4dd \u067e\u0631\u062f\u0627\u0632\u0634 \u0632\u0628\u0627\u0646 \u0637\u0628\u06cc\u0642\u06cc")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u067e\u0631\u062f\u0627\u0632\u0634 \u0632\u0628\u0627\u0646"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u0645\u062a\u0646 \u0648\u0631\u0648\u062f\u06cc:"), self.text_input)
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u062c\u0645\u0644\u0627\u062a \u062e\u0644\u0627\u0635\u0647:"), self.sp_n_sent)
+
+    def _get_sample_text(self):
+        return ("""The Federal Reserve announced a 25 basis point interest rate hike, citing persistent inflation pressures.  
+Market analysts expect further tightening in the coming quarters as the central bank maintains its hawkish stance.  
+Technology stocks experienced significant volatility, with the NASDAQ composite declining 2.3% on the news.  
+Corporate earnings from major banks exceeded expectations, with JPMorgan Chase reporting record quarterly revenue of $38.5 billion.  
+Oil prices surged above $85 per barrel following OPEC+ production cut announcements.""")
+
+    def _demo_params(self):
+        text = self._get_sample_text()
+        self.text_input.setPlainText(text)
+        self._nlp_cache = text
+        return text, self.sp_n_sent.value()
+
+    def _get_params(self):
+        text = self.text_input.toPlainText()
+        if not text:
+            text = self._get_sample_text()
+            self.text_input.setPlainText(text)
+        self._nlp_cache = text
+        return text, self.sp_n_sent.value()
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        text, n_sent = params
+        self._worker = self.NLPWorker(text, n_sent)
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "nlp"
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        sentiment = result.get("sentiment", {})
+        entities = result.get("entities", [])
+        summary = result.get("summary", "")
+
+        # Table: sentiment + entities
+        table_data = []
+        if isinstance(sentiment, dict):
+            for k, v in sentiment.items():
+                table_data.append({"\u0645\u0648\u0631\u062f": f"\u0627\u062d\u0633\u0627\u0633 - {k}", "\u0645\u0642\u062f\u0627\u0631": v})
+        if isinstance(entities, list):
+            for ent in entities[:10]:
+                if isinstance(ent, dict):
+                    table_data.append({"\u0645\u0648\u0631\u062f": ent.get("text", ent.get("entity", "")),
+                                      "\u0646\u0648\u0639": ent.get("label", ent.get("type", ""))})
+                else:
+                    table_data.append({"\u0645\u0648\u0631\u062f": str(ent), "\u0646\u0648\u0639": "-"})
+        if summary:
+            table_data.append({"\u0645\u0648\u0631\u062f": "\u062e\u0644\u0627\u0635\u0647", "\u0645\u0642\u062f\u0627\u0631": summary[:100]})
+        if not table_data:
+            table_data = [{k: str(v)[:80] for k, v in result.items() if not isinstance(v, (list, np.ndarray, dict))}]
+        populate_table(self.results_table, table_data)
+
+        ax1 = self.fig.add_subplot(121)
+        ax2 = self.fig.add_subplot(122)
+
+        # Sentiment pie chart
+        if isinstance(sentiment, dict):
+            pos = sentiment.get("positive", sentiment.get("pos", sentiment.get("score", 0.5)))
+            neg = sentiment.get("negative", sentiment.get("neg", 1 - pos))
+            neutral = sentiment.get("neutral", max(0, 1 - pos - neg))
+            sizes = [max(pos, 0.01), max(neg, 0.01)]
+            if neutral > 0:
+                sizes.append(neutral)
+            labels_s = ["\u0645\u062b\u0628\u062a", "\u0645\u0646\u0641\u06cc"]
+            colors_s = [SUCCESS_COLOR, ERROR_COLOR]
+            if neutral > 0:
+                labels_s.append("\u062e\u0646\u062b\u06cc")
+                colors_s.append(MUTED_TEXT)
+            ax1.pie(sizes, labels=labels_s, autopct='%1.1f%%', colors=colors_s,
+                   textprops={"color": TEXT_COLOR, "fontsize": 10})
+            ax1.set_title("\u062a\u062d\u0644\u06cc\u0644 \u0627\u062d\u0633\u0627\u0633\u0627\u062a", fontsize=12, color=TEXT_COLOR)
+
+        # Entity type distribution
+        if isinstance(entities, list) and entities:
+            type_counts = {}
+            for ent in entities:
+                t = ent.get("label", ent.get("type", "\u0646\u0627\u0645\u0634\u062e\u0635")) if isinstance(ent, dict) else str(ent)
+                type_counts[t] = type_counts.get(t, 0) + 1
+            if type_counts:
+                labels_e = list(type_counts.keys())
+                vals_e = list(type_counts.values())
+                ax2.bar(labels_e, vals_e, color=ACCENT_COLOR, edgecolor=GRID_COLOR)
+                ax2.set_title("\u062a\u0648\u0632\u06cc\u0639 \u0627\u0646\u0648\u0627\u0639 \u0648\u0627\u062d\u062f\u0647\u0627", fontsize=12, color=TEXT_COLOR)
+                for bar, val in zip(ax2.patches, vals_e):
+                    ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+                            str(val), ha="center", va="bottom", color=TEXT_COLOR, fontsize=10)
+        style_axes(ax1)
+        style_axes(ax2)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tab 15: GPU Acceleration  —  \u0634\u062a\u0627\u0628\u06af\u0631\u062f\u06cc
+# ═══════════════════════════════════════════════════════════════
+class GPUTab(BaseTab):
+    class GPUWorker(QThread):
+        finished = pyqtSignal(dict)
+        error = pyqtSignal(str)
+
+        def __init__(self, n_sims, antithetic, n_steps):
+            super().__init__()
+            self.n_sims = n_sims
+            self.antithetic = antithetic
+            self.n_steps = n_steps
+
+        def run(self):
+            try:
+                engine = GPUAccelerator()
+                mc = engine.accelerated_monte_carlo(
+                    n_simulations=self.n_sims,
+                    antithetic=self.antithetic,
+                    n_steps=self.n_steps,
+                )
+                garch = engine.accelerated_garch(n_steps=self.n_steps)
+                corr = engine.accelerated_correlation(n_assets=10, n_obs=self.n_steps)
+                bench = engine.performance_benchmark(n_simulations=self.n_sims)
+                self.finished.emit({"mc": mc, "garch": garch, "correlation": corr, "benchmark": bench})
+            except Exception as e:
+                self.error.emit(str(e))
+
+    def __init__(self, parent=None):
+        self.sp_n_sims = _ispin(100000, 1000, 1000000, 10000)
+        self.cb_antithetic = QCheckBox("\u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u0627\u0632 \u0645\u062a\u0636\u0627\u062f (Antithetic)")
+        self.sp_n_steps = _ispin(252, 50, 500, 10)
+        self._gpu_cache = None
+        super().__init__(parent)
+        self.header.setText("\u26a1 \u0634\u062a\u0627\u0628\u06af\u0631\u062f\u06cc GPU")
+
+    def _group_title(self):
+        return "\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u0634\u062a\u0627\u0628\u06af\u0631\u062f\u06cc"
+
+    def _build_inputs(self):
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u0634\u0628\u06cc\u0647\u200c\u0633\u0627\u0632\u06cc\u200c\u0647\u0627:"), self.sp_n_sims)
+        self.input_form.addRow(_label(""), self.cb_antithetic)
+        self.input_form.addRow(_label("\u062a\u0639\u062f\u0627\u062f \u0645\u0631\u0627\u062d\u0644:"), self.sp_n_steps)
+
+    def _demo_params(self):
+        return self.sp_n_sims.value(), self.cb_antithetic.isChecked(), self.sp_n_steps.value()
+
+    def _get_params(self):
+        return self.sp_n_sims.value(), self.cb_antithetic.isChecked(), self.sp_n_steps.value()
+
+    def _run_task(self, task_name, params):
+        self.status_label.setText("\u23f3 \u062f\u0631 \u062d\u0627\u0644 \u0627\u062c\u0631\u0627...")
+        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-style: italic;")
+        self.demo_btn.setEnabled(False)
+        self.exec_btn.setEnabled(False)
+        n_sims, antithetic, n_steps = params
+        self._worker = self.GPUWorker(n_sims, antithetic, n_steps)
+        self._worker.finished.connect(self._on_result)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
+    def _task_name(self, params):
+        return "gpu"
+
+    def _display_result(self, result):
+        if "error" in result:
+            self._on_error(result["error"])
+            return
+        self.fig.clear()
+        mc = result.get("mc", {})
+        garch = result.get("garch", {})
+        bench = result.get("benchmark", {})
+        corr = result.get("correlation", {})
+
+        # Table
+        table_data = []
+        if isinstance(mc, dict):
+            for k, v in mc.items():
+                if not isinstance(v, (list, np.ndarray)):
+                    table_data.append({"\u0628\u062e\u0634": "MC", "\u0645\u0648\u0631\u062f": k, "\u0645\u0642\u062f\u0627\u0631": v})
+        if isinstance(garch, dict):
+            for k, v in garch.items():
+                if not isinstance(v, (list, np.ndarray)):
+                    table_data.append({"\u0628\u062e\u0634": "GARCH", "\u0645\u0648\u0631\u062f": k, "\u0645\u0642\u062f\u0627\u0631": v})
+        if isinstance(bench, dict):
+            for k, v in bench.items():
+                table_data.append({"\u0628\u062e\u0634": "\u0645\u0639\u06cc\u0627\u0631", "\u0645\u0648\u0631\u062f": k, "\u0645\u0642\u062f\u0627\u0631": v})
+        if not table_data:
+            table_data = [{k: v for k, v in result.items() if not isinstance(v, (list, np.ndarray, dict))}]
+        populate_table(self.results_table, table_data)
+
+        ax1 = self.fig.add_subplot(131)
+        ax2 = self.fig.add_subplot(132)
+        ax3 = self.fig.add_subplot(133)
+
+        # MC price distribution
+        mc_prices = mc.get("prices", mc.get("terminal_prices", []))
+        if mc_prices and len(mc_prices) > 0:
+            ax1.hist(mc_prices, bins=50, color=ACCENT_COLOR, edgecolor=GRID_COLOR, alpha=0.8)
+            ax1.set_title("\u062a\u0648\u0632\u06cc\u0639 \u0642\u06cc\u0645\u062a MC", fontsize=11, color=TEXT_COLOR)
+            ax1.set_xlabel("\u0642\u06cc\u0645\u062a")
+        else:
+            ax1.text(0.5, 0.5, "\u062f\u0627\u062f\u0647 MC",
+                   transform=ax1.transAxes, ha="center", va="center", color=MUTED_TEXT)
+        style_axes(ax1)
+
+        # GARCH forecast
+        garch_vol = garch.get("forecast_volatility", garch.get("conditional_volatility", []))
+        if garch_vol and len(garch_vol) > 0:
+            ax2.plot(garch_vol, color=PURPLE_COLOR, linewidth=1.5)
+            ax2.set_title("\u0646\u0648\u0633\u0627\u0646\u200c\u067e\u0630\u06cc\u0631\u06cc GARCH", fontsize=11, color=TEXT_COLOR)
+            ax2.set_xlabel("\u0632\u0645\u0627\u0646")
+        else:
+            ax2.text(0.5, 0.5, "\u062f\u0627\u062f\u0647 GARCH",
+                   transform=ax2.transAxes, ha="center", va="center", color=MUTED_TEXT)
+        style_axes(ax2)
+
+        # Benchmark
+        if isinstance(bench, dict) and bench:
+            labels_b = list(bench.keys())[:6]
+            vals_b = [float(bench.get(k, 0)) for k in labels_b]
+            ax3.bar(range(len(vals_b)), vals_b, color=SUCCESS_COLOR, edgecolor=GRID_COLOR)
+            ax3.set_xticks(range(len(vals_b)))
+            ax3.set_xticklabels(labels_b, rotation=45, ha="right", fontsize=7, color=MUTED_TEXT)
+            ax3.set_title("\u0645\u0639\u06cc\u0627\u0631 \u0639\u0645\u0644\u06a9\u0631\u062f", fontsize=11, color=TEXT_COLOR)
+            ax3.set_ylabel("\u062b\u0627\u0646\u06cc\u0647")
+        else:
+            ax3.text(0.5, 0.5, "\u062f\u0627\u062f\u0647 \u0645\u0639\u06cc\u0627\u0631",
+                   transform=ax3.transAxes, ha="center", va="center", color=MUTED_TEXT)
+        style_axes(ax3)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
 # ═══════════════════════════════════════════════════════════════
 # Main Dashboard Widget — assembling all 9 tabs
 # ═══════════════════════════════════════════════════════════════
 class QuantDashboard(QWidget):
-    """Main quantitative finance dashboard with 9 integrated tabs.
+    """Main quantitative finance dashboard with 15 integrated tabs.
 
     Integrates all quantitative finance modules:
     1. Portfolio Optimization (Markowitz, Sharpe, Efficient Frontier)
@@ -1685,6 +2474,12 @@ class QuantDashboard(QWidget):
     7. Behavioral Finance (Disposition, Overconfidence, Herding)
     8. Monte Carlo Simulation (GBM, Portfolio MC)
     9. Interest Rate Models (Vasicek, CIR, Hull-White)
+    10. Topological Data Analysis (Betti, Persistence, Hurst)
+    11. Generative Models (Diffusion, Stress Scenarios)
+    12. Explainability (SHAP, LIME, Feature Importance)
+    13. Quantum Finance (QAOA, QMC, VQE)
+    14. Financial NLP (Sentiment, NER, Summarization)
+    15. GPU Acceleration (MC, GARCH, Benchmark)
     """
 
     TAB_TITLES = [
@@ -1697,11 +2492,18 @@ class QuantDashboard(QWidget):
         "\u0645\u0627\u0644\u06cc \u0631\u0641\u062a\u0627\u0631\u06cc",
         "\u0645\u0648\u0646\u062a\u200c\u06a9\u0627\u0631\u0644\u0648",
         "\u0646\u0631\u062e \u0628\u0647\u0631\u0647",
+        "\u062a\u0648\u067e\u0648\u0644\u0648\u0698\u06cc\u06a9\u06cc",
+        "\u0645\u0627\u0634\u06cc\u0646 \u0698\u0646\u0631\u0627\u062a\u0648\u0631",
+        "\u062a\u0641\u0633\u06cc\u0631\u067e\u0630\u06cc\u0631\u06cc",
+        "\u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc",
+        "\u067e\u0631\u062f\u0627\u0632\u0634 \u0632\u0628\u0627\u0646",
+        "\u0634\u062a\u0627\u0628\u06af\u0631\u062f\u06cc",
     ]
 
     TAB_ICONS = [
         "\u2728", "\u2699\ufe0f", "\u26a0\ufe0f", "\ud83d\udcc8",
         "\ud83c\udf00", "\ud83d\udd78\ufe0f", "\ud83e\udde0", "\ud83c\udfb2", "\ud83d\udcb0",
+        "\U0001f52d", "\U0001f300", "\U0001f50d", "\u269b\ufe0f", "\U0001f4dd", "\u26a1",
     ]
 
     def __init__(self, parent=None):
@@ -1722,7 +2524,7 @@ class QuantDashboard(QWidget):
         title_lbl = _label("\ud83d\udcca JurisFinanceAI \u2014 \u062f\u0627\u0634\u0628\u0648\u0631\u062f \u06a9\u0645\u06cc", bold=True, color=TEXT_COLOR, size=16)
         title_layout.addWidget(title_lbl)
         title_layout.addStretch()
-        info_lbl = _label("\u0628\u0647\u06cc\u0646\u0647\u200c\u0633\u0627\u0632\u06cc | \u0645\u0634\u062a\u0642\u0627\u062a | \u0631\u06cc\u0633\u06a9 | \u0633\u0631\u06cc \u0632\u0645\u0627\u0646\u06cc | \u0641\u0627\u0632\u06cc | \u0634\u0628\u06a9\u0647 | \u0631\u0641\u062a\u0627\u0631\u06cc | MC | \u0646\u0631\u062e \u0628\u0647\u0631\u0647",
+        info_lbl = _label("\u0628\u0647\u06cc\u0646\u0647\u200c\u0633\u0627\u0632\u06cc | \u0645\u0634\u062a\u0642\u0627\u062a | \u0631\u06cc\u0633\u06a9 | \u0633\u0631\u06cc \u0632\u0645\u0627\u0646\u06cc | \u0641\u0627\u0632\u06cc | \u0634\u0628\u06a9\u0647 | \u0631\u0641\u062a\u0627\u0631\u06cc | MC | \u0646\u0631\u062e \u0628\u0647\u0631\u0647 | \u062a\u0648\u067e\u0648\u0644\u0648\u0698\u06cc\u06a9\u06cc | \u0698\u0646\u0631\u0627\u062a\u0648\u0631 | \u062a\u0641\u0633\u06cc\u0631\u067e\u0630\u06cc\u0631\u06cc | \u06a9\u0648\u0627\u0646\u062a\u0648\u0645\u06cc | NLP | GPU",
                          color=MUTED_TEXT, size=11)
         title_layout.addWidget(info_lbl)
         main_layout.addWidget(title_bar)
@@ -1734,7 +2536,7 @@ class QuantDashboard(QWidget):
         self.tab_widget.setMovable(False)
         self.tab_widget.setUsesScrollButtons(True)
 
-        # Create all 9 tabs
+        # Create all 15 tabs
         tabs = [
             PortfolioTab(),
             DerivativesTab(),
@@ -1745,6 +2547,12 @@ class QuantDashboard(QWidget):
             BehavioralTab(),
             MonteCarloTab(),
             InterestRateTab(),
+            TopologicalTab(),
+            GenerativeTab(),
+            ExplainabilityTab(),
+            QuantumTab(),
+            NLPTab(),
+            GPUTab(),
         ]
 
         for i, (tab, title, icon) in enumerate(zip(tabs, self.TAB_TITLES, self.TAB_ICONS)):
@@ -1757,7 +2565,7 @@ class QuantDashboard(QWidget):
         return self.tab_widget.currentWidget()
 
     def set_tab(self, index):
-        """Switch to a specific tab by index (0-8)."""
+        """Switch to a specific tab by index (0-14)."""
         if 0 <= index < self.tab_widget.count():
             self.tab_widget.setCurrentIndex(index)
 

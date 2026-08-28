@@ -10,6 +10,12 @@ Modules:
     behavioral      - Behavioral biases, prospect theory, sentiment
     monte_carlo     - General-purpose Monte Carlo simulation engine
     interest_rates  - Vasicek, CIR, Hull-White interest rate models
+    topological     - TDA, persistent homology, chaos indicators, complexity
+    generative      - Diffusion models, GAN-like synthetic data, VAE, stress scenarios
+    explainability  - SHAP, LIME, counterfactual analysis, drift detection
+    quantum         - QAOA, quantum MC pricing, quantum kernels, VQE
+    nlp_engine      - Sentiment, NER, summarization, RAG retrieval
+    gpu_compute     - Accelerated MC, GARCH, correlation, batch pricing
 """
 
 from .portfolio import PortfolioOptimizer, FuzzyNumber
@@ -21,6 +27,12 @@ from .network import NetworkAnalyzer
 from .behavioral import BehavioralAnalyzer, ProspectTheory
 from .monte_carlo import MonteCarloEngine
 from .interest_rates import InterestRateModel
+from .topological import TopologicalAnalyzer
+from .generative import GenerativeModel
+from .explainability import ExplainabilityEngine
+from .quantum import QuantumFinanceEngine
+from .nlp_engine import FinancialNLPEngine
+from .gpu_compute import GPUAccelerator
 
 __all__ = [
     'PortfolioOptimizer', 'FuzzyNumber',
@@ -32,4 +44,10 @@ __all__ = [
     'BehavioralAnalyzer', 'ProspectTheory',
     'MonteCarloEngine',
     'InterestRateModel',
+    'TopologicalAnalyzer',
+    'GenerativeModel',
+    'ExplainabilityEngine',
+    'QuantumFinanceEngine',
+    'FinancialNLPEngine',
+    'GPUAccelerator',
 ]
