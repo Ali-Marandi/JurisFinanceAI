@@ -183,7 +183,7 @@ class GPUAccelerator:
         std[std < 1e-10] = 1
         normalized = centered / std
 
-        corr = (normalized.T @ normalized * mask.T @ mask) / (valid_pairs + 1e-10)
+        corr = (normalized.T @ normalized) * (mask.T @ mask) / (valid_pairs + 1e-10)
         np.fill_diagonal(corr, 1.0)
         corr = np.clip(corr, -1, 1)
 

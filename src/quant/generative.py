@@ -114,8 +114,9 @@ class GenerativeModel:
 
             # Backpropagation (manual)
             d_fake = np.sign(fake - real_mean) * 0.01
-            d_h = (d_fake @ W2) * (h > 0)
-            d_W2 = d_fake.reshape(-1, 1).T @ h
+            d_fake_2d = d_fake.reshape(-1, 1)
+            d_h = (d_fake_2d @ W2) * (h > 0)
+            d_W2 = d_fake_2d.T @ h
             d_b2 = np.sum(d_fake)
             d_W = d_h.T @ z
             d_b = np.sum(d_h, axis=0)

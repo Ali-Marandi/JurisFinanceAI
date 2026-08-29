@@ -112,7 +112,8 @@ class RiskEngine:
             sigma = np.std(r, ddof=1)
             z = stats.norm.ppf(alpha)
             var_return = mu + z * sigma
-        elif method == "cornish_fisher":
+        elif method in ("cornish_fisher", "monte_carlo"):
+            # monte_carlo falls back to Cornish-Fisher (analytical approximation)
             mu = np.mean(r)
             sigma = np.std(r, ddof=1)
             S = stats.skew(r)
