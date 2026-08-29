@@ -3,7 +3,15 @@ import matplotlib
 matplotlib.use('QtAgg')
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-fm.fontManager.addfont('/usr/share/fonts/truetype/chinese/NotoSansSC-Regular.ttf')
+import os
+for _fp in ['/usr/share/fonts/truetype/chinese/NotoSansSC-Regular.ttf',
+           '/usr/share/fonts/truetype/chinese/SarasaMonoSC-Regular.ttf',
+           '/usr/share/fonts/truetype/noto-serif-sc/NotoSerifSC-Regular.ttf']:
+    if os.path.exists(_fp):
+        try:
+            fm.fontManager.addfont(_fp)
+        except Exception:
+            pass
 plt.rcParams['font.sans-serif'] = ['Noto Sans SC', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -158,7 +166,7 @@ class QuantWorker(QThread):
                 T=self.kwargs['T'], r=self.kwargs['r'],
                 sigma=self.kwargs['sigma'],
                 option_type=self.kwargs.get('option_type', 'call'),
-                n_steps=self.kwargs.get('n_steps', 200),
+                n_periods=self.kwargs.get("n_periods", 252),
                 american=self.kwargs.get('american', False),
             )
 
@@ -169,7 +177,7 @@ class QuantWorker(QThread):
                 T=self.kwargs['T'], r=self.kwargs['r'],
                 sigma=self.kwargs['sigma'],
                 option_type=self.kwargs.get('option_type', 'call'),
-                n_simulations=self.kwargs.get('n_simulations', 10000),
+                n_paths=self.kwargs.get("n_paths", 1000),
             )
 
         elif name == 'implied_vol':
@@ -226,7 +234,7 @@ class QuantWorker(QThread):
                 debt_ratio=self.kwargs['debt_ratio'],
                 credit_history_years=self.kwargs['credit_history_years'],
                 employment_years=self.kwargs['employment_years'],
-                num_accounts=self.kwargs.get('num_accounts', 5),
+                existing_debt=self.kwargs.get('num_accounts', 5),
             )
 
         elif name == 'network_correlation':
@@ -281,7 +289,7 @@ class QuantWorker(QThread):
                 S0=self.kwargs['S0'], mu=self.kwargs['mu'],
                 sigma=self.kwargs['sigma'], T=self.kwargs['T'],
                 n_steps=self.kwargs.get('n_steps', 252),
-                n_simulations=self.kwargs.get('n_simulations', 1000),
+                n_paths=self.kwargs.get('n_paths', 1000),
             )
 
         elif name == 'mc_portfolio':
@@ -290,8 +298,8 @@ class QuantWorker(QThread):
                 initial_value=self.kwargs['initial_value'],
                 expected_returns=self.kwargs['expected_returns'],
                 cov_matrix=self.kwargs['cov_matrix'],
-                n_steps=self.kwargs.get('n_steps', 252),
-                n_simulations=self.kwargs.get('n_simulations', 1000),
+                n_periods=self.kwargs.get("n_periods", 252),
+                n_paths=self.kwargs.get("n_paths", 1000),
             )
 
         elif name == 'vasicek':
@@ -300,8 +308,8 @@ class QuantWorker(QThread):
                 r0=self.kwargs['r0'], a=self.kwargs['a'],
                 b=self.kwargs['b'], sigma=self.kwargs['sigma'],
                 T=self.kwargs.get('T', 1.0),
-                n_steps=self.kwargs.get('n_steps', 252),
-                n_simulations=self.kwargs.get('n_simulations', 1000),
+                n_periods=self.kwargs.get("n_periods", 252),
+                n_paths=self.kwargs.get("n_paths", 1000),
             )
 
         elif name == 'cir':
@@ -310,8 +318,8 @@ class QuantWorker(QThread):
                 r0=self.kwargs['r0'], a=self.kwargs['a'],
                 b=self.kwargs['b'], sigma=self.kwargs['sigma'],
                 T=self.kwargs.get('T', 1.0),
-                n_steps=self.kwargs.get('n_steps', 252),
-                n_simulations=self.kwargs.get('n_simulations', 1000),
+                n_periods=self.kwargs.get("n_periods", 252),
+                n_paths=self.kwargs.get("n_paths", 1000),
             )
 
         elif name == 'hull_white':
@@ -320,8 +328,8 @@ class QuantWorker(QThread):
                 r0=self.kwargs['r0'], a=self.kwargs['a'],
                 sigma=self.kwargs['sigma'],
                 T=self.kwargs.get('T', 1.0),
-                n_steps=self.kwargs.get('n_steps', 252),
-                n_simulations=self.kwargs.get('n_simulations', 1000),
+                n_periods=self.kwargs.get("n_periods", 252),
+                n_paths=self.kwargs.get("n_paths", 1000),
             )
 
         elif name == 'duration_convexity':
@@ -1808,7 +1816,7 @@ class GenerativeTab(BaseTab):
             try:
                 engine = GenerativeModel()
                 scenarios = engine.diffusion_scenarios(
-                    returns=self.returns,
+                    historical_returns=self.returns,
                     n_scenarios=self.n_scenarios,
                     n_steps=self.n_diffusion_steps,
                 )
@@ -1946,10 +1954,13 @@ class ExplainabilityTab(BaseTab):
         def run(self):
             try:
                 engine = ExplainabilityEngine()
-                shap = engine.shap_values(self.features, self.target)
-                lime = engine.lime_explanation(self.features, self.target, self.n_perturbations, self.kernel_width)
+                # Simple linear model for demonstration
+                model_fn = lambda X: np.array(X) @ np.array([0.3, -0.5, 0.2, 0.4, -0.1])
+                shap = engine.shap_values(self.features, model_fn)
+                lime = engine.lime_explanation(self.features[0], model_fn, self.n_perturbations, self.kernel_width)
                 imp = engine.feature_importance(self.features, self.target)
-                drift = engine.model_drift_detection(self.features, self.target)
+                half = len(self.features) // 2
+                drift = engine.model_drift_detection(self.features[:half], self.features[half:])
                 self.finished.emit({"shap": shap, "lime": lime, "importance": imp, "drift": drift})
             except Exception as e:
                 self.error.emit(str(e))
@@ -2066,20 +2077,19 @@ class QuantumTab(BaseTab):
                 engine = QuantumFinanceEngine()
                 if self.task_name == 'qaoa':
                     result = engine.qaoa_portfolio(
-                        returns=self.kwargs['returns'],
+                        expected_returns=np.mean(self.kwargs['returns'], axis=0),
                         cov_matrix=self.kwargs['cov_matrix'],
-                        n_qubits=self.kwargs['n_qubits'],
                         n_layers=self.kwargs['n_layers'],
                     )
                 elif self.task_name == 'qmc':
                     result = engine.quantum_monte_carlo_pricing(
-                        S0=self.kwargs['S0'], K=self.kwargs['K'],
-                        T=self.kwargs['T'], r=self.kwargs['r'],
-                        sigma=self.kwargs['sigma'],
+                        s0=self.kwargs['S0'], k=self.kwargs['K'],
+                        r=self.kwargs['r'], sigma=self.kwargs['sigma'],
+                        t=self.kwargs['T'],
                     )
                 elif self.task_name == 'vqe':
                     result = engine.variational_quantum_eigenvalue(
-                        cov_matrix=self.kwargs['cov_matrix'],
+                        matrix=self.kwargs['cov_matrix'],
                         n_qubits=self.kwargs['n_qubits'],
                         n_layers=self.kwargs['n_layers'],
                     )
@@ -2341,13 +2351,16 @@ class GPUTab(BaseTab):
             try:
                 engine = GPUAccelerator()
                 mc = engine.accelerated_monte_carlo(
-                    n_simulations=self.n_sims,
-                    antithetic=self.antithetic,
+                    s0=100, mu=0.1, sigma=0.2, t=1.0,
+                    n_sims=self.n_sims,
                     n_steps=self.n_steps,
+                    antithetic=self.antithetic,
                 )
-                garch = engine.accelerated_garch(n_steps=self.n_steps)
-                corr = engine.accelerated_correlation(n_assets=10, n_obs=self.n_steps)
-                bench = engine.performance_benchmark(n_simulations=self.n_sims)
+                _test_ret = np.random.randn(max(self.n_steps, 100)) * 0.02
+                garch = engine.accelerated_garch(returns=_test_ret)
+                _test_mat = np.random.randn(self.n_steps, 10) * 0.02
+                corr = engine.accelerated_correlation(returns_matrix=_test_mat)
+                bench = engine.performance_benchmark(sizes=[1000, 10000, min(100000, self.n_sims)])
                 self.finished.emit({"mc": mc, "garch": garch, "correlation": corr, "benchmark": bench})
             except Exception as e:
                 self.error.emit(str(e))

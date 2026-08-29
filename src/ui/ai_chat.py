@@ -235,7 +235,7 @@ class AIChatPage(QWidget):
         title.setStyleSheet("font-size: 24px; font-weight: 700; color: #f8fafc; background: transparent;")
         welcome_layout.addWidget(title)
 
-        subtitle = QLabel("دستیار هوش مصنوعی حقوقی و مالی شما").arg(chr(10))
+        subtitle = QLabel("دستیار هوش مصنوعی حقوقی و مالی شما")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("font-size: 14px; color: #64748b; background: transparent;")
         welcome_layout.addWidget(subtitle)

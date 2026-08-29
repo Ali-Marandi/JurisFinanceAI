@@ -180,8 +180,7 @@ class DocumentsPage(QWidget):
             return
 
         if not DocumentParser.is_supported(file_path):
-            QMessageBox.warning(self, "خطا", "فرمت فایل پشتیبانی نمی‌شود.
-فرمت‌های پشتیبانی: PDF, DOCX, TXT, RTF")
+            QMessageBox.warning(self, "خطا", "فرمت فایل پشتیبانی نمی‌شود.\nفرمت‌های پشتیبانی: PDF, DOCX, TXT, RTF")
             return
 
         # Parse document
@@ -196,8 +195,12 @@ class DocumentsPage(QWidget):
 
         doc_id = self.db.add_document(filename, file_path, file_type, file_size, text)
         self.db.update_document_analysis(doc_id, text[:500], metadata)
-        self.config = get_config()
-        self.config.add_recent_file(file_path)
+        try:
+            from ..core.config import get_config
+            self.config = get_config()
+            self.config.add_recent_file(file_path)
+        except Exception:
+            pass
         self.db.log_action("upload_document", {"filename": filename})
 
         self._refresh_list()

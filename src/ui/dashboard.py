@@ -235,8 +235,8 @@ class DashboardPage(QWidget):
         x = np.arange(len(days))
         width = 0.35
 
-        bars1 = ax.bar(x - width/2, conversations, width, label='گفتگوها', color='#3b82f6', alpha=0.8, border_radius=4)
-        bars2 = ax.bar(x + width/2, documents, width, label='اسناد', color='#8b5cf6', alpha=0.8, border_radius=4)
+        bars1 = ax.bar(x - width/2, conversations, width, label='گفتگوها', color='#3b82f6', alpha=0.8)
+        bars2 = ax.bar(x + width/2, documents, width, label='اسناد', color='#8b5cf6', alpha=0.8)
 
         ax.set_xticks(x)
         ax.set_xticklabels(days, color='#94a3b8', fontsize=10)
