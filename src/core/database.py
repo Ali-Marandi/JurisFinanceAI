@@ -6,6 +6,7 @@ Handles all local data persistence: chat history, documents, cases, reports.
 import sqlite3
 import json
 import os
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -20,6 +21,9 @@ class DatabaseManager:
         self.db_path = config.app_directory / "jurisfinanceai.db"
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
+        self._lock = threading.Lock()
         self._create_tables()
 
     def _create_tables(self):
@@ -260,6 +264,12 @@ class DatabaseManager:
         )
         self.conn.commit()
 
+    def get_document(self, doc_id: int) -> Optional[Dict]:
+        """Get a single document by ID."""
+        cursor = self._execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
     def delete_document(self, doc_id: int):
         """Delete a document record."""
         cursor = self.conn.cursor()
@@ -418,9 +428,19 @@ class DatabaseManager:
             "active_cases": active_cases,
         }
 
+    def _execute(self, query, params=None):
+        with self._lock:
+            cursor = self.conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            return cursor
+
     def close(self):
         """Close the database connection."""
-        self.conn.close()
+        with self._lock:
+            self.conn.close()
 
 
 # Singleton instance

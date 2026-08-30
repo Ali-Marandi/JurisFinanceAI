@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons["settings"] = settings_btn
         layout.addWidget(settings_btn)
 
-        version = QLabel("نسخه ۴.۰.۱")
+        version = QLabel("نسخه ۴.۱.۰")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version.setStyleSheet("color: #475569; font-size: 11px; background: transparent; padding: 8px;")
         layout.addWidget(version)

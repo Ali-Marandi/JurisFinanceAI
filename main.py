@@ -2,7 +2,7 @@
 JurisFinanceAI - Commercial Legal & Finance AI Desktop Application
 Main entry point.
 
-Version: 4.0.1
+Version: 4.1.0
 Author: Ali Marandi
 
 A professional-grade AI-powered legal and financial assistant

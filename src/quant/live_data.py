@@ -82,7 +82,7 @@ class LiveDataEngine:
             'includePrePost': 'false'
         }
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) JurisFinanceAI/3.0'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) JurisFinanceAI/4.1.0'
         }
 
         try:
@@ -272,7 +272,7 @@ class LiveDataEngine:
 
         url = f'https://query1.finance.yahoo.com/v1/finance/search'
         params = {'q': query, 'quotesCount': 10, 'newsCount': 0}
-        headers = {'User-Agent': 'Mozilla/5.0 JurisFinanceAI/3.0'}
+        headers = {'User-Agent': 'Mozilla/5.0 JurisFinanceAI/4.1.0'}
 
         try:
             resp = session.get(url, params=params, headers=headers)

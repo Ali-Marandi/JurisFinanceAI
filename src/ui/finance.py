@@ -1,5 +1,3 @@
-import io
-import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -7,7 +5,7 @@ from PyQt6.QtWidgets import (
     QDialog, QFormLayout, QDialogButtonBox, QInputDialog, QMessageBox
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QColor
 import matplotlib
 matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -228,6 +226,7 @@ class FinancePage(QWidget):
         ax = self.figure.add_subplot(111)
         ax.set_facecolor('#1e2a45')
 
+        # NOTE: Hardcoded placeholder data — replace with DB-driven queries when available
         months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور']
         income = np.array([45000, 52000, 38000, 61000, 48000, 55000])
         expense = np.array([32000, 28000, 35000, 42000, 30000, 38000])

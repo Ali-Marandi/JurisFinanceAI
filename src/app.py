@@ -18,11 +18,18 @@ def create_app() -> QApplication:
 
     app = QApplication(sys.argv)
     app.setApplicationName("JurisFinanceAI")
-    app.setApplicationVersion("1.0.0")
+    from src import __version__
+    app.setApplicationVersion(__version__)
     app.setOrganizationName("Ali Marandi")
 
     # Default font for Persian text support
-    font = QFont("Segoe UI", 10)
+    try:
+        from src.core.config import get_config
+        config = get_config()
+        font_size = config.get('ui.font_size', 10)
+        font = QFont('Segoe UI', int(font_size))
+    except Exception:
+        font = QFont('Segoe UI', 10)
     font.setStyleHint(QFont.StyleHint.SansSerif)
     app.setFont(font)
 

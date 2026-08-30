@@ -3,14 +3,13 @@ JurisFinanceAI - AI Chat Page
 Chat interface for legal and financial AI assistance.
 """
 
-import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
     QPushButton, QTextEdit, QComboBox, QScrollArea, QListWidget,
-    QListWidgetItem, QSplitter, QMenu
+    QListWidgetItem, QSplitter
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
-from PyQt6.QtGui import QFont, QTextCursor
+from PyQt6.QtGui import QTextCursor
 
 from ..core.database import get_database
 from ..core.ai_engine import get_ai_engine
@@ -331,6 +330,11 @@ class AIChatPage(QWidget):
     def _send_message(self):
         if self._is_generating:
             return
+
+        # Clean up previous worker
+        if hasattr(self, '_worker') and self._worker.isRunning():
+            self._worker.quit()
+            self._worker.wait(1000)
 
         text = self.input_field.toPlainText().strip()
         if not text:

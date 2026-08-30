@@ -1,4 +1,5 @@
 import os
+import re
 import importlib
 import importlib.util
 import json
@@ -26,7 +27,7 @@ class Plugin:
 
     @staticmethod
     def version():
-        return '1.0.0'
+        return '4.1.0'
 
     def run_analysis(self, data):
         raise NotImplementedError
@@ -195,29 +196,34 @@ class PluginManager:
 
     def create_plugin_template(self, name, description=''):
         """Generate a template file for a new plugin."""
+        import re
+        safe_name = re.sub(r'[^a-zA-Z0-9_]', '', name)
+        if not safe_name:
+            raise ValueError(f"Invalid plugin name: {name}")
+
         if not os.path.exists(self.plugin_dir):
             os.makedirs(self.plugin_dir, exist_ok=True)
 
-        template = f'''"""{name} plugin for JurisFinanceAI."""
+        template = f'''"""{safe_name} plugin for JurisFinanceAI."""
 import numpy as np
 from src.core.plugin_system import Plugin
 
 
-class {name}Plugin(Plugin):
+class {safe_name}Plugin(Plugin):
     @staticmethod
     def name():
-        return "{name.lower()}"
+        return "{safe_name.lower()}"
 
     @staticmethod
     def description():
-        return "{description or name + ' analysis plugin'}"
+        return "{description or safe_name + ' analysis plugin'}"
 
     @staticmethod
     def version():
         return "1.0.0"
 
     def run_analysis(self, data):
-        """Run {name} analysis on the provided data."""
+        """Run {safe_name} analysis on the provided data."""
         # data is a dict with 'returns', 'prices', etc.
         returns = data.get('returns', np.array([]))
         results = {{}}
@@ -231,7 +237,7 @@ class {name}Plugin(Plugin):
         return None
 '''
 
-        filepath = os.path.join(self.plugin_dir, f'{name.lower()}.py')
+        filepath = os.path.join(self.plugin_dir, f'{safe_name.lower()}.py')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(template)
 

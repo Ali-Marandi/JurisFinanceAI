@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QProgressBar, QSplitter, QMessageBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont
 
 from ..core.database import get_database
 from ..core.document_parser import DocumentParser
@@ -86,6 +85,7 @@ class DocumentsPage(QWidget):
             QTextEdit { background-color: #0d1b36; color: #f1f5f9; border: 1px solid #334155; border-radius: 10px; padding: 8px 14px; font-size: 13px; }
             QTextEdit:focus { border-color: #3b82f6; }
         """)
+        self.search_input.textChanged.connect(self._on_search_changed)
         action_bar.addWidget(self.search_input)
 
         main_layout.addLayout(action_bar)
@@ -241,6 +241,11 @@ class DocumentsPage(QWidget):
         if not self.current_doc_id or not self.current_doc_text:
             return
 
+        # Clean up previous worker
+        if hasattr(self, '_worker') and self._worker.isRunning():
+            self._worker.quit()
+            self._worker.wait(1000)
+
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setText("در حال تحلیل...")
 
@@ -259,6 +264,12 @@ class DocumentsPage(QWidget):
         self.detail_content.setPlainText(f"خطا در تحلیل: {error}")
         self.analyze_btn.setEnabled(True)
         self.analyze_btn.setText("تحلیل با هوش مصنوعی")
+
+    def _on_search_changed(self, text: str):
+        """Filter document list based on search text."""
+        for i in range(self.doc_list.count()):
+            item = self.doc_list.item(i)
+            item.setHidden(text.lower() not in item.text().lower())
 
     def _delete_document(self):
         if self.current_doc_id:

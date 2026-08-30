@@ -128,7 +128,7 @@ class AIEngine:
                 return response.choices[0].message.content
 
         except Exception as e:
-            return f"❌ خطا در ارتباط با هوش مصنوعی: {str(e)}"
+            return f"خطا در ارتباط با هوش مصنوعی. لطفاً تنظیمات API را بررسی کنید."
 
     def _handle_stream(self, stream) -> str:
         """Handle streaming response."""

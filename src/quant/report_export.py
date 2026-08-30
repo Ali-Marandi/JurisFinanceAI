@@ -151,7 +151,7 @@ class ReportExporter:
         """Export comprehensive analysis report combining all results."""
         lines = []
         lines.append('=' * 70)
-        lines.append('  JurisFinanceAI v3.0 - Comprehensive Analysis Report')
+        lines.append('  JurisFinanceAI v4.1.0 - Comprehensive Analysis Report')
         lines.append(f'  Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         lines.append('=' * 70)
 

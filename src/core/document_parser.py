@@ -80,7 +80,7 @@ class DocumentParser:
             return full_text, metadata
 
         except Exception as e:
-            return None, {"error": str(e)}
+            return None, {"error": "خطا در پردازش فایل PDF. لطفاً فایل را بررسی کنید."}
 
     @staticmethod
     def _parse_docx(filepath: str) -> Tuple[Optional[str], Dict]:
@@ -115,7 +115,7 @@ class DocumentParser:
             return full_text, metadata
 
         except Exception as e:
-            return None, {"error": str(e)}
+            return None, {"error": "خطا در پردازش فایل DOCX. لطفاً فایل را بررسی کنید."}
 
     @staticmethod
     def _parse_text(filepath: str) -> Tuple[Optional[str], Dict]:
@@ -134,7 +134,7 @@ class DocumentParser:
             return text, metadata
 
         except Exception as e:
-            return None, {"error": str(e)}
+            return None, {"error": "خطا در پردازش فایل متنی. لطفاً فایل را بررسی کنید."}
 
     @staticmethod
     def get_file_info(filepath: str) -> Dict:

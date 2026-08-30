@@ -4,11 +4,10 @@ Manages application settings, API keys, and user preferences.
 """
 
 import json
+import copy
 import os
 from pathlib import Path
 from cryptography.fernet import Fernet
-import base64
-import hashlib
 
 
 class ConfigManager:
@@ -61,6 +60,7 @@ class ConfigManager:
             return self.key_file.read_bytes()
         key = Fernet.generate_key()
         self.key_file.write_bytes(key)
+        self.key_file.chmod(0o600)
         return key
 
     def _encrypt(self, value: str) -> str:
@@ -78,7 +78,7 @@ class ConfigManager:
             f = Fernet(self._key)
             return f.decrypt(value.encode()).decode()
         except Exception:
-            return value
+            return ""  # Don't expose ciphertext on failure
 
     def _load_config(self) -> dict:
         """Load configuration from file."""
@@ -86,7 +86,7 @@ class ConfigManager:
             try:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
-                    config = self.DEFAULT_CONFIG.copy()
+                    config = copy.deepcopy(self.DEFAULT_CONFIG)
                     config.update(loaded)
                     # Decrypt sensitive fields
                     if "api" in config and "openai_api_key" in config["api"]:
@@ -95,8 +95,8 @@ class ConfigManager:
                         )
                     return config
             except (json.JSONDecodeError, KeyError):
-                return self.DEFAULT_CONFIG.copy()
-        return self.DEFAULT_CONFIG.copy()
+                return copy.deepcopy(self.DEFAULT_CONFIG)
+        return copy.deepcopy(self.DEFAULT_CONFIG)
 
     def save(self):
         """Save current configuration to file."""

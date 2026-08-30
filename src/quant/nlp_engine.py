@@ -18,7 +18,7 @@ class FinancialNLPEngine:
         'recovery', 'expansion', 'dividend', 'yield', 'return', 'upside',
         'opportunity', 'innovation', 'breakthrough', 'acquisition', 'merger',
         'saudi', 'profitable', 'efficient', 'optimistic', 'confidence',
-        'upgrade', 'recommend', 'overweight', 'buy', 'long', 'momentum'
+        'recommend', 'overweight', 'buy', 'long', 'momentum'
     ]
 
     FINANCIAL_NEGATIVE = [
@@ -30,7 +30,7 @@ class FinancialNLPEngine:
         'sell', 'short', 'panic', 'fear', 'concern', 'warning'
     ]
 
-    FINANCICAL_ENTITIES = {
+    FINANCIAL_ENTITIES = {
         'CURRENCY': [
             'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'IRR', 'SAR', 'AED',
             'dollar', 'euro', 'pound', 'yen', 'yuan', 'rial', 'riyal',
@@ -165,7 +165,7 @@ class FinancialNLPEngine:
         entities = []
 
         # Entity detection
-        for entity_type, keywords in self.FINANCICAL_ENTITIES.items():
+        for entity_type, keywords in self.FINANCIAL_ENTITIES.items():
             for kw in keywords:
                 pattern = re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
                 matches = pattern.findall(text)
@@ -236,7 +236,7 @@ class FinancialNLPEngine:
         word_freq = Counter(all_words)
         important_words = set(
             self.FINANCIAL_POSITIVE + self.FINANCIAL_NEGATIVE +
-            [k for keys in self.FINANCICAL_ENTITIES.values() for k in keys]
+            [k for keys in self.FINANCIAL_ENTITIES.values() for k in keys]
         )
 
         scores = []

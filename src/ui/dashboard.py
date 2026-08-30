@@ -1,11 +1,8 @@
-import sys
-import io
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
     QLabel, QPushButton, QScrollArea, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QPixmap, QImage
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 import matplotlib
 matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -88,14 +85,16 @@ class ActivityItem(QFrame):
 class DashboardPage(QWidget):
     """Dashboard overview page."""
 
+    navigate_request = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.db = get_database()
         self._init_ui()
         # Refresh data periodically
         self._refresh_timer = QTimer()
-        self._refresh_timer.timeout.connect(self._refresh_data)
-        self._refresh_timer.start(5000)
+        self._refresh_timer.timeout.connect(self._refresh_stats_only)
+        self._refresh_timer.start(30000)
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -204,6 +203,7 @@ class DashboardPage(QWidget):
                     border-color: {color};
                 }}
             """)
+            btn.clicked.connect(lambda checked, t=text: self._on_quick_action(t))
             quick_layout.addWidget(btn)
 
         quick_layout.addStretch()
@@ -212,7 +212,12 @@ class DashboardPage(QWidget):
         self._refresh_data()
 
     def _refresh_data(self):
-        """Refresh dashboard data from database."""
+        """Refresh all dashboard data from database."""
+        self._refresh_stats_only()
+        self._draw_chart()
+
+    def _refresh_stats_only(self):
+        """Refresh only the stat cards without redrawing the chart."""
         try:
             analytics = self.db.get_analytics_summary()
             self.stat_conversations.findChild(QLabel).setText(str(analytics["total_conversations"]))
@@ -220,7 +225,17 @@ class DashboardPage(QWidget):
             self.stat_cases.findChild(QLabel).setText(str(analytics["total_cases"]))
         except Exception:
             pass
-        self._draw_chart()
+
+    def _on_quick_action(self, text: str):
+        """Handle quick action button clicks."""
+        action_map = {
+            "💬 گفتگوی جدید": "chat",
+            "📄 آپلود سند": "documents",
+            "🛡 تحلیل قرارداد": "chat",
+            "💰 ثبت تراکنش": "finance",
+        }
+        page = action_map.get(text, "chat")
+        self.navigate_request.emit(page)
 
     def _draw_chart(self):
         """Draw the activity chart."""
@@ -228,6 +243,7 @@ class DashboardPage(QWidget):
         ax = self.figure.add_subplot(111)
         ax.set_facecolor('#1e2a45')
 
+        # NOTE: Hardcoded placeholder data — replace with DB-driven queries when available
         days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه']
         conversations = np.array([5, 8, 12, 7, 15, 10, 3])
         documents = np.array([2, 4, 6, 3, 8, 5, 1])
